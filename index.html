@@ -13,23 +13,28 @@
   </head>
 <body>
 <h1>NMEA lat/lon to decimal degree</h1>
-  Convert between coordinates from NMEA GPS/GNSS output (degree + fractional minute) to decimal degree (DD) & degree, minutes, seconds (DMS).
-  <br>
-  Example NMEA input: <a href="#" onclick="document.getElementById('input').value='5528.02650,N,00841.20895,E';">5528.02650,N,00841.20895,E</a> 
-  <br>
+  Convert between coordinates encoded in a string in accordance with NMEA 0183 (typically from a GPS/GNSS receiver) in (degree + fractional minute) to standard decimal degree (DD) and degree, minutes, seconds (DMS) encoded format.
+  <p>
+    Example input:<br>
+    From a NMEA RMC sentence like <strong>$GNRMC,114922.00,A,5528.02212,N,00841.21015,E,0.315,,150916,,,A*6D</strong><br>You would input the coordinate parts (comma index 3 to 6) <strong><a href="#" onclick="document.getElementById('input').value='5528.02212,N,00841.21015,E';">5528.02212,N,00841.21015,E</a></strong>.
+  <p>
+    At the moment only 5 digit minute fraction is supported (as used by u-blox, 4 digits has also been seen in the wild by Telit).
+  <p>
   <input type=text id=input onkeypres="convert();" oninput="convert();"><button onclick="convert();">Convert</button>
 <p id=dd>
 <p id=dms>
 <p id=osm>
+<p id=gmaps>
+<p id=ctrl>
 <div id="map"></div>
     <script>
       function nmeaToDD(nmea) {
 	if (nmea) {
           latdeg=nmea.substring(0,0+2);
-          latmin=nmea.substring(0+2,2+7);
+          latmin=nmea.substring(0+2,2+8);
           latdir=(nmea[11]=='N'?1:-1)
           londeg=nmea.substring(13,13+3);
-          lonmin=nmea.substring(13+3,13+3+7);
+          lonmin=nmea.substring(13+3,13+3+8);
           londir=(nmea[25]=='E'?1:-1)
           return({
                    lat: (Number(latdeg)+parseFloat(latmin)/60) * latdir
@@ -54,18 +59,30 @@
       }
 
       function convert() {
+/*      inArray=input.document.getElementById('input').value.split(',');
+        if(inArray[0].indexOf('RMC')==3)
+          nmeaCords=implode(inArray, ',', 3,6);
+        else
+          nmeaCords=implode(inArray, ',', 0,2);
+        decdeg = nmeaToDD(nmeaCoords);
+*/
+
         decdeg = nmeaToDD(document.getElementById('input').value);
         document.getElementById('dd').innerHTML= 'Decimal degree (DD): '+decdeg;
 //        document.getElementById('dd').innerHTML= 'Decimal degree (DD): lat= '+decdeg.lat+', lon= '+decdeg.lon;
         dms=ddToDMS(decdeg);
 //        document.getElementById('dms').innerHTML= 'Degree, minutes, seconds (DMS): '+dms;
-        document.getElementById('osm').innerHTML= '<a href=http://www.openstreetmap.org/?mlat='+decdeg.lat+'&mlon='+decdeg.lon+'#map=17/'+decdeg.lat+'/'+decdeg.lon+'>openstreetmap at lat= '+decdeg.lat+' lon= '+decdeg.lon+'</a>';
+        document.getElementById('osm').innerHTML= '<a href=http://www.openstreetmap.org/?mlat='+decdeg.lat+'&mlon='+decdeg.lon+'#map=17/'+decdeg.lat+'/'+decdeg.lon+'>openstreetmap</a>';
 
-      // http://leafletjs.com/reference.html#marker
-      if (typeof marker == 'object')
-        marker.setLatLng([decdeg.lat,decdeg.lon]);
-      else
-        marker= L.marker([decdeg.lat,decdeg.lon], {title: "point"}).addTo(map);
+        document.getElementById('gmaps').innerHTML= '<a href=https://www.google.com/maps/@'+decdeg.lat+','+decdeg.lon+',15z/data=!3m1!1e3>Google Maps</a>';
+
+        document.getElementById('ctrl').innerHTML =  '<button onclick="map.setView([decdeg.lat,decdeg.lon]);">Center</button><button onclick="map.setView([decdeg.lat,decdeg.lon],18);">Max zoom</button>';
+
+        // http://leafletjs.com/reference.html#marker
+        if (typeof marker == 'object')
+          marker.setLatLng([decdeg.lat,decdeg.lon]);
+        else
+          marker= L.marker([decdeg.lat,decdeg.lon], {title: "point"}).addTo(map);
       }
 
       var map;
