@@ -15,12 +15,12 @@
 <h1>NMEA lat/lon to decimal degree</h1>
   Convert between coordinates encoded in a string in accordance with NMEA 0183 (typically from a GPS/GNSS receiver) in (degree + fractional minute) to standard decimal degree (DD) and degree, minutes, seconds (DMS) encoded format.
   <p>
+    All digits that are present in the minute fractions are taken into consideration in the calculation. GPS receivers emit sentences with differing lengths; 4 by Telit (ex. 5528.0453), 5 by u-blox (ex. 5528.02212). Other soruces indicate that <a href="http://www.gpsinformation.org/dale/nmea.htm#RMC">2</a> and <a href="http://catb.org/gpsd/NMEA.html#_rmc_recommended_minimum_navigation_information">3</a> digits is also in use.
+  <p>
+  NMEA coordinate: <input type=text id=input onkeypres="convert();" oninput="convert();"><button onclick="convert();">Convert</button>
+  <br>
     Example input:<br>
-    From a NMEA RMC sentence like <strong>$GNRMC,114922.00,A,5528.02212,N,00841.21015,E,0.315,,150916,,,A*6D</strong><br>You would input the coordinate parts (comma index 3 to 6) <strong><a href="#" onclick="document.getElementById('input').value='5528.02212,N,00841.21015,E';">5528.02212,N,00841.21015,E</a></strong>.
-  <p>
-    At the moment only 5 digit minute fraction is supported (as used by u-blox, 4 digits has also been seen in the wild by Telit).
-  <p>
-  <input type=text id=input onkeypres="convert();" oninput="convert();"><button onclick="convert();">Convert</button>
+    From a NMEA RMC sentence like <strong>$GNRMC,114922.00,A,5528.02212,N,00841.21015,E,0.315,,150916,,,A*6D</strong><br>You would input the coordinate parts (comma index 3 to 6) <strong><a href="#" onclick="document.getElementById('input').value='5528.02212,N,00841.21015,E'; convert();">5528.02212,N,00841.21015,E</a></strong>.
 <p id=dd>
 <p id=dms>
 <p id=osm>
@@ -29,13 +29,27 @@
 <div id="map"></div>
     <script>
       function nmeaToDD(nmea) {
-	if (nmea) {
-          latdeg=nmea.substring(0,0+2);
-          latmin=nmea.substring(0+2,2+8);
-          latdir=(nmea[11]=='N'?1:-1)
-          londeg=nmea.substring(13,13+3);
-          lonmin=nmea.substring(13+3,13+3+8);
-          londir=(nmea[25]=='E'?1:-1)
+        if (   (nmea=nmea.split(',')).length == 4
+            && nmea[1].length == 1
+            && nmea[3].length == 1) {
+          // Parse latitude, fields 0+1
+          latdeg=nmea[0].substring(0,2); // lat degree is 2 chars (0-90)
+          latmin=nmea[0].substring(2);   // use rest for minute fraction
+          latdir=(nmea[1]=='N'?1:-1);    // north is positive in DD
+          // Parse longitude, fields 2+3
+          londeg=nmea[2].substring(0,3); // lon degree is 3 chars (0-180)
+          lonmin=nmea[2].substring(3);
+          londir=(nmea[3]=='E'?1:-1);    // east is positive in DD
+          console.log(''
+                      +'\nlatdeg='+latdeg
+                      +'\nlatmin='+latmin
+                      +'\nlatdir='+latdir
+                      +'\nlondeg='+londeg
+                      +'\nlonmin='+lonmin
+                      +'\nlondir='+londir
+          );
+          if (latmin.split('.').length != 2 || lonmin.split('.').length != 2)
+            return;
           return({
                    lat: (Number(latdeg)+parseFloat(latmin)/60) * latdir
                  , lon: (Number(londeg)+parseFloat(lonmin)/60) * londir
@@ -68,7 +82,7 @@
 */
 
         decdeg = nmeaToDD(document.getElementById('input').value);
-        document.getElementById('dd').innerHTML= 'Decimal degree (DD): '+decdeg;
+        document.getElementById('dd').innerHTML= 'Decimal degree (DD): <b>'+decdeg+'</b>';
 //        document.getElementById('dd').innerHTML= 'Decimal degree (DD): lat= '+decdeg.lat+', lon= '+decdeg.lon;
         dms=ddToDMS(decdeg);
 //        document.getElementById('dms').innerHTML= 'Degree, minutes, seconds (DMS): '+dms;
